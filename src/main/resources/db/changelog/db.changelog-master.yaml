@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - include:
+      file: db/changelog/changeset/v1/1.0.0-create-schema-gallery.yaml
+  - include:
+      file: db/changelog/changeset/v1/1.0.1-create-table-images.yaml
+  - include:
+      file: db/changelog/changeset/v1/1.0.2-create-table-comments.yaml
+  - include:
+      file: db/changelog/changeset/v1/1.0.3-create-table-likes.yaml

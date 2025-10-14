@@ -1,0 +1,34 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1.0.3
+      author: Artur Asiptsou
+      changes:
+        - createTable:
+            schemaName: gallery
+            tableName: likes
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: image_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_likes_image_id
+                    references: gallery.images(id)
+                    deleteCascade: true
