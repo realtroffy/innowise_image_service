@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Configuration;
 @ConfigurationProperties(prefix = "aws.s3")
 public class S3Properties {
     private String endpointUrl;
+    private String publicUrl;
     private String region;
     private String bucketName;
     private String accessKey;

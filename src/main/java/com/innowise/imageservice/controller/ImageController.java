@@ -6,6 +6,7 @@ import com.innowise.imageservice.dto.ImageRequestDto;
 import com.innowise.imageservice.dto.ImageResponseDto;
 import com.innowise.imageservice.dto.PaginatedSliceResponseDto;
 import com.innowise.imageservice.service.ImageService;
+
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -71,6 +72,14 @@ public class ImageController {
                                                          @Valid @RequestBody CommentRequestDto commentRequestDto) {
         return new ResponseEntity<>(imageService.addComment(userId, imageId, commentRequestDto), HttpStatus.CREATED);
     }
+
+    @GetMapping("/images/{id}/comments")
+    public ResponseEntity<PaginatedSliceResponseDto<CommentResponseDto>> getAllCommentsByImageId(@PathVariable("id") Long imageId,
+                                                                                                 @RequestParam(defaultValue = "0") int page,
+                                                                                                 @RequestParam(defaultValue = "5") int size) {
+        return ResponseEntity.ok(imageService.getAllCommentsByImageId(imageId, page, size));
+    }
+
 
     @DeleteMapping("/images/{id}/comments/{commentId}")
     public ResponseEntity<?> deleteComment(@RequestHeader("X-User-Id") String userId,

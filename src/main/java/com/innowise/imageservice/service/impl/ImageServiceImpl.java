@@ -171,6 +171,14 @@ public class ImageServiceImpl implements ImageService {
         return commentMapper.toCommentResponseDto(commentRepository.save(comment));
     }
 
+    @Override
+    public PaginatedSliceResponseDto<CommentResponseDto> getAllCommentsByImageId(Long imageId, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Slice<CommentResponseDto> commentInfo = commentRepository.findAllByImageId(imageId, pageable)
+                .map(commentMapper::toCommentResponseDto);
+        return PaginatedSliceResponseDto.of(commentInfo);
+    }
+
     private String generateUniqueFilename(String userId, String originalFilename) {
         String extension = "";
         if (originalFilename != null && originalFilename.contains(".")) {

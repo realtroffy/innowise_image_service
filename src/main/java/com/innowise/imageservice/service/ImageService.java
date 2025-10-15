@@ -24,4 +24,6 @@ public interface ImageService {
     void deleteComment(String userId, Long imageId, Long commentId);
 
     CommentResponseDto updateComment(String userId, Long imageId, Long commentId, CommentRequestDto commentRequestDto);
+
+    PaginatedSliceResponseDto<CommentResponseDto> getAllCommentsByImageId(Long imageId, int page, int size);
 }

@@ -43,7 +43,7 @@ public class S3Service {
 
     private String generateImageUrl(String filename) {
         return String.format(URL_FORMAT,
-                s3Properties.getEndpointUrl(),
+                s3Properties.getPublicUrl(),
                 s3Properties.getBucketName(),
                 filename);
     }

@@ -21,6 +21,7 @@ spring:
 aws:
   s3:
     endpoint-url: http://localhost:4566
+    public-url: http://localhost:4566
     region: us-east-1
     bucket-name: images
     access-key: test
