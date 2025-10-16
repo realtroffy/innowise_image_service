@@ -7,6 +7,7 @@ import com.innowise.imageservice.dto.ImageResponseDto;
 import com.innowise.imageservice.dto.PaginatedSliceResponseDto;
 import com.innowise.imageservice.service.ImageService;
 
+import com.innowise.imageservice.swagger.ImageControllerSwagger;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -29,7 +30,7 @@ import static org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api")
-public class ImageController {
+public class ImageController implements ImageControllerSwagger {
 
     private final ImageService imageService;
 
@@ -47,15 +48,16 @@ public class ImageController {
         return ResponseEntity.ok(imageService.getById(imageId));
     }
 
+
     @GetMapping("/users/images")
-    public ResponseEntity<PaginatedSliceResponseDto<ImageResponseDto>> getAllUByUserId(@RequestHeader("X-User-Id") String currentUserId,
+    public ResponseEntity<PaginatedSliceResponseDto<ImageResponseDto>> getAllByUserId(@RequestHeader("X-User-Id") String currentUserId,
                                                                                        @RequestParam(defaultValue = "0") int page,
                                                                                        @RequestParam(defaultValue = "20") int size) {
         return ResponseEntity.ok(imageService.getAllByUserId(currentUserId, page, size));
     }
 
     @GetMapping("/images")
-    public ResponseEntity<PaginatedSliceResponseDto<ImageResponseDto>> getAllBy(@RequestParam(defaultValue = "0") int page,
+    public ResponseEntity<PaginatedSliceResponseDto<ImageResponseDto>> getAll(@RequestParam(defaultValue = "0") int page,
                                                                                 @RequestParam(defaultValue = "20") int size) {
         return ResponseEntity.ok(imageService.getAll(page, size));
     }
