@@ -5,6 +5,7 @@ import com.innowise.imageservice.dto.CommentResponseDto;
 import com.innowise.imageservice.dto.ErrorResponse;
 import com.innowise.imageservice.dto.ImageRequestDto;
 import com.innowise.imageservice.dto.ImageResponseDto;
+import com.innowise.imageservice.dto.ImageWithLikeByCurrentUserResponseDto;
 import com.innowise.imageservice.dto.PaginatedSliceResponseDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -84,7 +85,9 @@ public interface ImageControllerSwagger {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @GetMapping("/images/{id}")
-    ResponseEntity<ImageResponseDto> getById(
+    ResponseEntity<ImageWithLikeByCurrentUserResponseDto> getById(
+            @Parameter(hidden = true)
+            @RequestHeader("X-User-Id") String currentUserId,
             @Parameter(description = "ID of the image to retrieve", required = true)
             @PathVariable("id") Long imageId
     );

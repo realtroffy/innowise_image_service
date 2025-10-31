@@ -4,6 +4,7 @@ import com.innowise.imageservice.dto.CommentRequestDto;
 import com.innowise.imageservice.dto.CommentResponseDto;
 import com.innowise.imageservice.dto.ImageRequestDto;
 import com.innowise.imageservice.dto.ImageResponseDto;
+import com.innowise.imageservice.dto.ImageWithLikeByCurrentUserResponseDto;
 import com.innowise.imageservice.dto.PaginatedSliceResponseDto;
 import com.innowise.imageservice.service.ImageService;
 
@@ -44,8 +45,9 @@ public class ImageController implements ImageControllerSwagger {
     }
 
     @GetMapping("/images/{id}")
-    public ResponseEntity<ImageResponseDto> getById(@PathVariable("id") Long imageId) {
-        return ResponseEntity.ok(imageService.getById(imageId));
+    public ResponseEntity<ImageWithLikeByCurrentUserResponseDto> getById(@RequestHeader("X-User-Id") String currentUserId,
+                                                                         @PathVariable("id") Long imageId) {
+        return ResponseEntity.ok(imageService.getById(currentUserId, imageId));
     }
 
 

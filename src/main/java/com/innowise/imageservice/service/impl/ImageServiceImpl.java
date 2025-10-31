@@ -5,6 +5,7 @@ import com.innowise.imageservice.dto.CommentRequestDto;
 import com.innowise.imageservice.dto.CommentResponseDto;
 import com.innowise.imageservice.dto.ImageRequestDto;
 import com.innowise.imageservice.dto.ImageResponseDto;
+import com.innowise.imageservice.dto.ImageWithLikeByCurrentUserResponseDto;
 import com.innowise.imageservice.dto.PaginatedSliceResponseDto;
 import com.innowise.imageservice.exception.CommentNotFoundException;
 import com.innowise.imageservice.exception.ImageFileRequiredException;
@@ -82,8 +83,9 @@ public class ImageServiceImpl implements ImageService {
     }
 
     @Override
-    public ImageResponseDto getById(Long imageId) {
-        return imageMapper.toImageResponseDto(findById(imageId));
+    public ImageWithLikeByCurrentUserResponseDto getById(String currentUserId, Long imageId) {
+        return imageRepository.findWithLikeByCurrentUserId(Long.valueOf(currentUserId), imageId).orElseThrow(() ->
+                new ImageNotFoundException(IMAGE_NOT_FOUND_EXCEPTION_MESSAGE));
     }
 
     private Image findById(Long imageId) {
