@@ -37,6 +37,7 @@ class ImageControllerIT extends IntegrationTestConfig {
     private static final String LIKES_PATH = "/likes";
     private static final String COMMENTS_PATH = "/comments";
     private static final String USER_ID = "1";
+    private static final String USER_NAME_STRING = "User";
     private static final String SECOND_USER_ID = "2";
     private static final String PAGE_PARAM = "page";
     private static final String SIZE_PARAM = "size";
@@ -126,7 +127,7 @@ class ImageControllerIT extends IntegrationTestConfig {
         imageService.upload(USER_ID, imageRequestDto, imageFile);
         imageService.upload(SECOND_USER_ID, imageRequestDto, imageFile);
 
-        mvc.perform(get(USERS_URL + USER_ID + IMAGES_PATH)
+        mvc.perform(get(USERS_URL + IMAGES_PATH)
                         .param(PAGE_PARAM, PAGE_VALUE)
                         .param(SIZE_PARAM, SIZE_VALUE)
                         .header("X-User-Id", USER_ID))
@@ -158,6 +159,7 @@ class ImageControllerIT extends IntegrationTestConfig {
         CommentRequestDto commentDto = new CommentRequestDto(COMMENT_CONTENT);
         MvcResult result = mvc.perform(post(postUrl)
                         .header("X-User-Id", USER_ID)
+                        .header("X-User-Name", USER_NAME_STRING)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(commentDto)))
                 .andExpect(status().isCreated())
@@ -171,6 +173,7 @@ class ImageControllerIT extends IntegrationTestConfig {
         CommentRequestDto updatedDto = new CommentRequestDto(UPDATED_COMMENT_CONTENT);
         mvc.perform(put(putUrl)
                         .header("X-User-Id", USER_ID)
+                        .header("X-User-Name", USER_NAME_STRING)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updatedDto)))
                 .andExpect(status().isOk())

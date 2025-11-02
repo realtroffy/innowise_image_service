@@ -48,6 +48,9 @@ public class Comment implements Serializable {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
+    @Column(name = "user_name", nullable = false)
+    private String userName;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "image_id", referencedColumnName = "id", nullable = false)
     @ToString.Exclude

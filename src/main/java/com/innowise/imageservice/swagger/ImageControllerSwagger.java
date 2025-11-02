@@ -2,6 +2,7 @@ package com.innowise.imageservice.swagger;
 
 import com.innowise.imageservice.dto.CommentRequestDto;
 import com.innowise.imageservice.dto.CommentResponseDto;
+import com.innowise.imageservice.dto.CommentWithOwnersResponseDto;
 import com.innowise.imageservice.dto.ErrorResponse;
 import com.innowise.imageservice.dto.ImageRequestDto;
 import com.innowise.imageservice.dto.ImageResponseDto;
@@ -185,6 +186,8 @@ public interface ImageControllerSwagger {
     ResponseEntity<CommentResponseDto> addComment(
             @Parameter(hidden = true)
             @RequestHeader("X-User-Id") String userId,
+            @Parameter(hidden = true)
+            @RequestHeader("X-User-Name") String userName,
             @Parameter(description = "ID of the image to comment on", required = true)
             @PathVariable("id") Long imageId,
             @Parameter(description = "Comment details (content)", required = true)
@@ -207,7 +210,9 @@ public interface ImageControllerSwagger {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @GetMapping("/images/{id}/comments")
-    ResponseEntity<PaginatedSliceResponseDto<CommentResponseDto>> getAllCommentsByImageId(
+    ResponseEntity<PaginatedSliceResponseDto<CommentWithOwnersResponseDto>> getAllCommentsByImageId(
+            @Parameter(hidden = true)
+            @RequestHeader("X-User-Id") String userId,
             @Parameter(description = "ID of the image to retrieve comments for", required = true)
             @PathVariable("id") Long imageId,
             @Parameter(description = "Page number (default: 0)")

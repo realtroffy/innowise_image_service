@@ -3,6 +3,7 @@ package com.innowise.imageservice.service.impl;
 import com.innowise.imageservice.config.ImageProperties;
 import com.innowise.imageservice.dto.CommentRequestDto;
 import com.innowise.imageservice.dto.CommentResponseDto;
+import com.innowise.imageservice.dto.CommentWithOwnersResponseDto;
 import com.innowise.imageservice.dto.ImageRequestDto;
 import com.innowise.imageservice.dto.ImageResponseDto;
 import com.innowise.imageservice.dto.ImageWithLikeByCurrentUserResponseDto;
@@ -133,13 +134,14 @@ public class ImageServiceImpl implements ImageService {
     }
 
     @Override
-    public CommentResponseDto addComment(String userId, Long imageId, CommentRequestDto commentRequestDto) {
+    public CommentResponseDto addComment(String userId, String userName, Long imageId, CommentRequestDto commentRequestDto) {
         Image image = findById(imageId);
         Comment comment = Comment.builder()
                 .content(commentRequestDto.content())
                 .createdAt(LocalDateTime.now())
                 .image(image)
                 .userId(Long.valueOf(userId))
+                .userName(userName)
                 .build();
         Comment savedComment = commentRepository.save(comment);
         return commentMapper.toCommentResponseDto(savedComment);
@@ -174,11 +176,14 @@ public class ImageServiceImpl implements ImageService {
     }
 
     @Override
-    public PaginatedSliceResponseDto<CommentResponseDto> getAllCommentsByImageId(Long imageId, int page, int size) {
+    public PaginatedSliceResponseDto<CommentWithOwnersResponseDto> getAllCommentsByImageId(
+            Long imageId, String currentUserId, int page, int size) {
+
         Pageable pageable = PageRequest.of(page, size);
-        Slice<CommentResponseDto> commentInfo = commentRepository.findAllByImageId(imageId, pageable)
-                .map(commentMapper::toCommentResponseDto);
-        return PaginatedSliceResponseDto.of(commentInfo);
+        Slice<CommentWithOwnersResponseDto> slice =
+                commentRepository.findAllByImageIdWithOwner(imageId, Long.valueOf(currentUserId), pageable);
+
+        return PaginatedSliceResponseDto.of(slice);
     }
 
     private String generateUniqueFilename(String userId, String originalFilename) {

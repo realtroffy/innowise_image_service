@@ -2,11 +2,13 @@ package com.innowise.imageservice.dto;
 
 import java.time.LocalDateTime;
 
-public record CommentResponseDto(
+public record CommentWithOwnersResponseDto(
         Long id,
         String content,
         LocalDateTime createdAt,
         Long userId,
         Long imageId,
-        String userName) {
+        boolean isCurrentUserOwner,
+        String ownerName) {
 }
+
