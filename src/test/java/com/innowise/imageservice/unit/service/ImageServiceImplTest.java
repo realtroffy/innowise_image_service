@@ -18,6 +18,7 @@ import com.innowise.imageservice.model.Like;
 import com.innowise.imageservice.repository.CommentRepository;
 import com.innowise.imageservice.repository.ImageRepository;
 import com.innowise.imageservice.repository.LikeRepository;
+import com.innowise.imageservice.service.AuthServiceClient;
 import com.innowise.imageservice.service.S3Service;
 import com.innowise.imageservice.service.impl.ImageServiceImpl;
 import org.junit.jupiter.api.Test;
@@ -32,6 +33,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -87,6 +89,8 @@ class ImageServiceImplTest {
     private CommentMapper commentMapper;
     @Mock
     private S3Service s3Service;
+    @Mock
+    private AuthServiceClient authServiceClient;
 
     @Mock
     private ImageProperties imageProperties;
@@ -115,7 +119,7 @@ class ImageServiceImplTest {
                 .uploadedAt(UPLOADED_AT)
                 .build();
 
-        ImageResponseDto expectedDto = new ImageResponseDto(IMAGE_ID, IMAGE_URL, IMAGE_DESCRIPTION, UPLOADED_AT, ZERO_LIKES, USER_ID_1);
+        ImageResponseDto expectedDto = new ImageResponseDto(IMAGE_ID, IMAGE_URL, IMAGE_DESCRIPTION, UPLOADED_AT, ZERO_LIKES, USER_ID_1, USER_NAME_STRING);
 
         when(s3Service.uploadImage(any(MultipartFile.class), anyString())).thenReturn(IMAGE_URL);
         when(imageRepository.save(any(Image.class))).thenReturn(savedImage);
@@ -124,7 +128,7 @@ class ImageServiceImplTest {
         ImageResponseDto result = imageService.upload(USER_ID_1_STRING, requestDto, file);
 
         assertNotNull(result);
-        assertEquals(IMAGE_URL, result.url());
+        assertEquals(IMAGE_URL, result.getUrl());
         verify(s3Service).uploadImage(any(MultipartFile.class), anyString());
         verify(imageRepository).save(any(Image.class));
     }
@@ -142,9 +146,13 @@ class ImageServiceImplTest {
     @Test
     void getById_shouldReturnImage() {
         ImageWithLikeByCurrentUserResponseDto imageWithLikeDto = new ImageWithLikeByCurrentUserResponseDto(
-                IMAGE_ID, IMAGE_URL, SHORT_DESCRIPTION, UPLOADED_AT, ZERO_LIKES, LIKED_BY_CURRENT_USER_BOOLEAN, USER_ID_1);
+                IMAGE_ID, IMAGE_URL, SHORT_DESCRIPTION, UPLOADED_AT, ZERO_LIKES,
+                LIKED_BY_CURRENT_USER_BOOLEAN, USER_NAME_STRING, USER_ID_1);
 
-        when(imageRepository.findWithLikeByCurrentUserId(USER_ID_1, IMAGE_ID)).thenReturn(Optional.of(imageWithLikeDto));
+        when(imageRepository.findWithLikeByCurrentUserId(USER_ID_1, IMAGE_ID))
+                .thenReturn(Optional.of(imageWithLikeDto));
+        when(authServiceClient.getUserNamesByIds(List.of(USER_ID_1)))
+                .thenReturn(new com.innowise.imageservice.dto.UserNamesResponseDto(Map.of(USER_ID_1, USER_NAME_STRING)));
 
         ImageWithLikeByCurrentUserResponseDto result = imageService.getById(USER_ID_1_STRING, IMAGE_ID);
 
@@ -197,8 +205,10 @@ class ImageServiceImplTest {
         when(imageRepository.findById(IMAGE_ID)).thenReturn(Optional.of(image));
         when(commentRepository.save(any(Comment.class))).thenReturn(comment);
         when(commentMapper.toCommentResponseDto(comment)).thenReturn(dto);
+        when(authServiceClient.getUserNamesByIds(List.of(USER_ID_1)))
+                .thenReturn(new com.innowise.imageservice.dto.UserNamesResponseDto(Map.of(USER_ID_1, USER_NAME_STRING)));
 
-        CommentResponseDto result = imageService.addComment(USER_ID_1_STRING, USER_NAME_STRING, IMAGE_ID, requestDto);
+        CommentResponseDto result = imageService.addComment(USER_ID_1_STRING, IMAGE_ID, requestDto);
 
         assertEquals(dto, result);
     }
@@ -260,28 +270,38 @@ class ImageServiceImplTest {
 
     @Test
     void getAllByUserId_shouldReturnSlice() {
-        Image image = Image.builder().id(IMAGE_ID).build();
-        ImageResponseDto dto = new ImageResponseDto(IMAGE_ID, IMAGE_URL, SHORT_DESCRIPTION, UPLOADED_AT, ZERO_LIKES, USER_ID_1);
+        Image image = Image.builder().id(IMAGE_ID).userId(USER_ID_1).build();
+        ImageResponseDto dto = new ImageResponseDto(IMAGE_ID, IMAGE_URL, SHORT_DESCRIPTION,
+                UPLOADED_AT, ZERO_LIKES, USER_ID_1, USER_NAME_STRING);
 
         Slice<Image> slice = new SliceImpl<>(List.of(image));
-        when(imageRepository.findByUserId(USER_ID_1, PageRequest.of(PAGE_NUMBER, PAGE_SIZE))).thenReturn(slice);
+        when(imageRepository.findByUserId(USER_ID_1, PageRequest.of(PAGE_NUMBER, PAGE_SIZE)))
+                .thenReturn(slice);
         when(imageMapper.toImageResponseDto(image)).thenReturn(dto);
+        when(authServiceClient.getUserNamesByIds(List.of(USER_ID_1)))
+                .thenReturn(new com.innowise.imageservice.dto.UserNamesResponseDto(Map.of(USER_ID_1, USER_NAME_STRING)));
 
-        PaginatedSliceResponseDto<ImageResponseDto> result = imageService.getAllByUserId(String.valueOf(USER_ID_1), PAGE_NUMBER, PAGE_SIZE);
+        PaginatedSliceResponseDto<ImageResponseDto> result =
+                imageService.getAllByUserId(String.valueOf(USER_ID_1), PAGE_NUMBER, PAGE_SIZE);
 
         assertEquals(SINGLE_ITEM_SIZE, result.getContent().size());
     }
 
     @Test
     void getAll_shouldReturnSlice() {
-        Image image = Image.builder().id(IMAGE_ID).build();
-        ImageResponseDto dto = new ImageResponseDto(IMAGE_ID, IMAGE_URL, SHORT_DESCRIPTION, UPLOADED_AT, ZERO_LIKES, USER_ID_1);
+        Image image = Image.builder().id(IMAGE_ID).userId(USER_ID_1).build();
+        ImageResponseDto dto = new ImageResponseDto(IMAGE_ID, IMAGE_URL, SHORT_DESCRIPTION,
+                UPLOADED_AT, ZERO_LIKES, USER_ID_1, USER_NAME_STRING);
 
         Slice<Image> slice = new SliceImpl<>(List.of(image));
-        when(imageRepository.findSlicedAll(PageRequest.of(PAGE_NUMBER, PAGE_SIZE))).thenReturn(slice);
+        when(imageRepository.findSlicedAll(PageRequest.of(PAGE_NUMBER, PAGE_SIZE)))
+                .thenReturn(slice);
         when(imageMapper.toImageResponseDto(image)).thenReturn(dto);
+        when(authServiceClient.getUserNamesByIds(List.of(USER_ID_1)))
+                .thenReturn(new com.innowise.imageservice.dto.UserNamesResponseDto(Map.of(USER_ID_1, USER_NAME_STRING)));
 
-        PaginatedSliceResponseDto<ImageResponseDto> result = imageService.getAll(PAGE_NUMBER, PAGE_SIZE);
+        PaginatedSliceResponseDto<ImageResponseDto> result =
+                imageService.getAll(PAGE_NUMBER, PAGE_SIZE);
 
         assertEquals(SINGLE_ITEM_SIZE, result.getContent().size());
     }

@@ -186,8 +186,6 @@ public interface ImageControllerSwagger {
     ResponseEntity<CommentResponseDto> addComment(
             @Parameter(hidden = true)
             @RequestHeader("X-User-Id") String userId,
-            @Parameter(hidden = true)
-            @RequestHeader("X-User-Name") String userName,
             @Parameter(description = "ID of the image to comment on", required = true)
             @PathVariable("id") Long imageId,
             @Parameter(description = "Comment details (content)", required = true)

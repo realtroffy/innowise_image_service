@@ -24,6 +24,7 @@ public interface ImageRepository extends JpaRepository<Image, Long> {
                    i.uploadedAt,
                    i.likes,
                    case when l.id is not null then true else false end,
+                   null,
                    i.userId)
             from Image i
             left join Like l on l.image = i and l.userId = :currentUserId

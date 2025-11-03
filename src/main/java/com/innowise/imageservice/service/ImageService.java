@@ -21,7 +21,7 @@ public interface ImageService {
 
     String setOrRemoveLike(String userId, Long imageId);
 
-    CommentResponseDto addComment(String userId, String userName, Long imageId, CommentRequestDto commentRequestDto);
+    CommentResponseDto addComment(String userId, Long imageId, CommentRequestDto commentRequestDto);
 
     void deleteComment(String userId, Long imageId, Long commentId);
 

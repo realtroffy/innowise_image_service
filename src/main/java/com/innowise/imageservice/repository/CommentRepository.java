@@ -17,7 +17,7 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
                c.userId,
                c.image.id,
                case when c.userId = :currentUserId then true else false end,
-               c.userName)
+               null)
         from Comment c
         where c.image.id = :imageId
         order by c.createdAt desc

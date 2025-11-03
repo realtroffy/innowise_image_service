@@ -73,10 +73,9 @@ public class ImageController implements ImageControllerSwagger {
 
     @PostMapping("/images/{id}/comments")
     public ResponseEntity<CommentResponseDto> addComment(@RequestHeader("X-User-Id") String userId,
-                                                         @RequestHeader("X-User-Name") String userName,
                                                          @PathVariable("id") Long imageId,
                                                          @Valid @RequestBody CommentRequestDto commentRequestDto) {
-        return new ResponseEntity<>(imageService.addComment(userId, userName, imageId, commentRequestDto), HttpStatus.CREATED);
+        return new ResponseEntity<>(imageService.addComment(userId, imageId, commentRequestDto), HttpStatus.CREATED);
     }
 
     @GetMapping("/images/{id}/comments")
