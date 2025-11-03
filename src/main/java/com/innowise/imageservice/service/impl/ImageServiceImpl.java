@@ -173,7 +173,9 @@ public class ImageServiceImpl implements ImageService {
                 .userId(Long.valueOf(userId))
                 .build();
         Comment savedComment = commentRepository.save(comment);
-        return commentMapper.toCommentResponseDto(savedComment);
+        CommentResponseDto commentResponseDto = commentMapper.toCommentResponseDto(savedComment);
+        commentResponseDto.setUserName(userName);
+        return commentResponseDto;
     }
 
     @Override
