@@ -185,8 +185,10 @@ public class ImageServiceImpl implements ImageService {
                 .orElseThrow(() -> new CommentNotFoundException(COMMENT_NOT_FOUND_EXCEPTION_MESSAGE));
         Image image = findById(imageId);
 
-        if (!comment.getUserId().equals(Long.valueOf(userId))
-                || !image.getUserId().equals(Long.valueOf(userId))) {
+        boolean isCommentOwner = comment.getUserId().equals(Long.valueOf(userId));
+        boolean isImageOwner = image.getUserId().equals(Long.valueOf(userId));
+
+        if (!isCommentOwner && !isImageOwner) {
             throw new OperationNotAllowedException(OPERATION_DELETE_NOT_ALLOWED_EXCEPTION_MESSAGE);
         }
 
