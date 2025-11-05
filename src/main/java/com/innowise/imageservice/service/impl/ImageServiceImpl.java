@@ -106,14 +106,16 @@ public class ImageServiceImpl implements ImageService {
     }
 
     @Override
-    public PaginatedSliceResponseDto<ImageResponseDto> getAllByUserId(String userId, int page, int size) {
+    public PaginatedSliceResponseDto<ImageWithLikeByCurrentUserResponseDto> getAllByUserId(String userId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        Slice<ImageResponseDto> imageInfo = imageRepository.findByUserId(Long.valueOf(userId), pageable)
-                .map(imageMapper::toImageResponseDto);
 
-        List<ImageResponseDto> updatedImages = updateUserNames(imageInfo.getContent());
+        Slice<ImageWithLikeByCurrentUserResponseDto> imageInfo = imageRepository
+                .findAllByOwnerIdWithLikeFlag(Long.valueOf(userId), pageable);
 
-        return PaginatedSliceResponseDto.<ImageResponseDto>builder()
+
+        List<ImageWithLikeByCurrentUserResponseDto> updatedImages = updateUserNames(imageInfo.getContent());
+
+        return PaginatedSliceResponseDto.<ImageWithLikeByCurrentUserResponseDto>builder()
                 .content(updatedImages)
                 .pageNumber(imageInfo.getNumber())
                 .pageSize(imageInfo.getSize())
@@ -122,14 +124,16 @@ public class ImageServiceImpl implements ImageService {
     }
 
     @Override
-    public PaginatedSliceResponseDto<ImageResponseDto> getAll(int page, int size) {
+    public PaginatedSliceResponseDto<ImageWithLikeByCurrentUserResponseDto> getAll(String currentUserId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        Slice<ImageResponseDto> imageInfo = imageRepository.findSlicedAll(pageable)
-                .map(imageMapper::toImageResponseDto);
 
-        List<ImageResponseDto> updatedImages = updateUserNames(imageInfo.getContent());
+        Slice<ImageWithLikeByCurrentUserResponseDto> imageInfo = imageRepository
+                .findAllWithLikeFlag(Long.valueOf(currentUserId), pageable);
 
-        return PaginatedSliceResponseDto.<ImageResponseDto>builder()
+
+        List<ImageWithLikeByCurrentUserResponseDto> updatedImages = updateUserNames(imageInfo.getContent());
+
+        return PaginatedSliceResponseDto.<ImageWithLikeByCurrentUserResponseDto>builder()
                 .content(updatedImages)
                 .pageNumber(imageInfo.getNumber())
                 .pageSize(imageInfo.getSize())
@@ -278,13 +282,13 @@ public class ImageServiceImpl implements ImageService {
         }
     }
 
-    private List<ImageResponseDto> updateUserNames(List<ImageResponseDto> images) {
+    private List<ImageWithLikeByCurrentUserResponseDto> updateUserNames(List<ImageWithLikeByCurrentUserResponseDto> images) {
         if (images == null || images.isEmpty()) {
             return images;
         }
 
         List<Long> userIds = images.stream()
-                .map(ImageResponseDto::getUserId)
+                .map(ImageWithLikeByCurrentUserResponseDto::getUserId)
                 .distinct()
                 .toList();
 

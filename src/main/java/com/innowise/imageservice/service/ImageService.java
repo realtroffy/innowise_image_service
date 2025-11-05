@@ -15,9 +15,9 @@ public interface ImageService {
 
     ImageWithLikeByCurrentUserResponseDto getById(String currentUserId, Long imageId);
 
-    PaginatedSliceResponseDto<ImageResponseDto> getAllByUserId(String userId, int page, int size);
+    PaginatedSliceResponseDto<ImageWithLikeByCurrentUserResponseDto> getAllByUserId(String userId, int page, int size);
 
-    PaginatedSliceResponseDto<ImageResponseDto> getAll(int page, int size);
+    PaginatedSliceResponseDto<ImageWithLikeByCurrentUserResponseDto> getAll(String currentUserId, int page, int size);
 
     String setOrRemoveLike(String userId, Long imageId);
 

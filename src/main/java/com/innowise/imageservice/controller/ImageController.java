@@ -53,16 +53,17 @@ public class ImageController implements ImageControllerSwagger {
 
 
     @GetMapping("/users/images")
-    public ResponseEntity<PaginatedSliceResponseDto<ImageResponseDto>> getAllByUserId(@RequestHeader("X-User-Id") String currentUserId,
+    public ResponseEntity<PaginatedSliceResponseDto<ImageWithLikeByCurrentUserResponseDto>> getAllByUserId(@RequestHeader("X-User-Id") String currentUserId,
                                                                                       @RequestParam(defaultValue = "0") int page,
                                                                                       @RequestParam(defaultValue = "20") int size) {
         return ResponseEntity.ok(imageService.getAllByUserId(currentUserId, page, size));
     }
 
     @GetMapping("/images")
-    public ResponseEntity<PaginatedSliceResponseDto<ImageResponseDto>> getAll(@RequestParam(defaultValue = "0") int page,
-                                                                                @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(imageService.getAll(page, size));
+    public ResponseEntity<PaginatedSliceResponseDto<ImageWithLikeByCurrentUserResponseDto>> getAll(@RequestHeader("X-User-Id") String userId,
+                                                                                                   @RequestParam(defaultValue = "0") int page,
+                                                                                                   @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(imageService.getAll(userId, page, size));
     }
 
     @PutMapping("/images/{id}/likes")
