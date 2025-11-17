@@ -3,9 +3,12 @@ package com.innowise.imageservice.service.impl;
 import com.innowise.imageservice.config.ImageProperties;
 import com.innowise.imageservice.dto.CommentRequestDto;
 import com.innowise.imageservice.dto.CommentResponseDto;
+import com.innowise.imageservice.dto.CommentWithOwnersResponseDto;
 import com.innowise.imageservice.dto.ImageRequestDto;
 import com.innowise.imageservice.dto.ImageResponseDto;
+import com.innowise.imageservice.dto.ImageWithLikeByCurrentUserResponseDto;
 import com.innowise.imageservice.dto.PaginatedSliceResponseDto;
+import com.innowise.imageservice.dto.UserNamesResponseDto;
 import com.innowise.imageservice.exception.CommentNotFoundException;
 import com.innowise.imageservice.exception.ImageFileRequiredException;
 import com.innowise.imageservice.exception.ImageNotFoundException;
@@ -20,6 +23,7 @@ import com.innowise.imageservice.model.Like;
 import com.innowise.imageservice.repository.CommentRepository;
 import com.innowise.imageservice.repository.ImageRepository;
 import com.innowise.imageservice.repository.LikeRepository;
+import com.innowise.imageservice.service.AuthServiceClient;
 import com.innowise.imageservice.service.ImageService;
 import com.innowise.imageservice.service.S3Service;
 import jakarta.transaction.Transactional;
@@ -31,6 +35,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -56,6 +61,7 @@ public class ImageServiceImpl implements ImageService {
     private final S3Service s3Service;
     private final ImageMapper imageMapper;
     private final CommentMapper commentMapper;
+    private final AuthServiceClient authServiceClient;
 
     @Override
     public ImageResponseDto upload(String userId, ImageRequestDto imageRequestDto, MultipartFile imageFile) {
@@ -82,8 +88,16 @@ public class ImageServiceImpl implements ImageService {
     }
 
     @Override
-    public ImageResponseDto getById(Long imageId) {
-        return imageMapper.toImageResponseDto(findById(imageId));
+    public ImageWithLikeByCurrentUserResponseDto getById(String currentUserId, Long imageId) {
+        ImageWithLikeByCurrentUserResponseDto imageWithLikeByCurrentUserResponseDto = imageRepository
+                .findWithLikeByCurrentUserId(Long.valueOf(currentUserId), imageId).orElseThrow(() ->
+                new ImageNotFoundException(IMAGE_NOT_FOUND_EXCEPTION_MESSAGE));
+
+        Long userId = imageWithLikeByCurrentUserResponseDto.getUserId();
+        UserNamesResponseDto userNamesByIds = authServiceClient.getUserNamesByIds(List.of(userId));
+        String userName = userNamesByIds.names().get(userId);
+        imageWithLikeByCurrentUserResponseDto.setUserName(userName);
+        return imageWithLikeByCurrentUserResponseDto;
     }
 
     private Image findById(Long imageId) {
@@ -92,19 +106,39 @@ public class ImageServiceImpl implements ImageService {
     }
 
     @Override
-    public PaginatedSliceResponseDto<ImageResponseDto> getAllByUserId(String userId, int page, int size) {
+    public PaginatedSliceResponseDto<ImageWithLikeByCurrentUserResponseDto> getAllByUserId(String userId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        Slice<ImageResponseDto> imageInfo = imageRepository.findByUserId(Long.valueOf(userId), pageable)
-                .map(imageMapper::toImageResponseDto);
-        return PaginatedSliceResponseDto.of(imageInfo);
+
+        Slice<ImageWithLikeByCurrentUserResponseDto> imageInfo = imageRepository
+                .findAllByOwnerIdWithLikeFlag(Long.valueOf(userId), pageable);
+
+
+        List<ImageWithLikeByCurrentUserResponseDto> updatedImages = updateUserNames(imageInfo.getContent());
+
+        return PaginatedSliceResponseDto.<ImageWithLikeByCurrentUserResponseDto>builder()
+                .content(updatedImages)
+                .pageNumber(imageInfo.getNumber())
+                .pageSize(imageInfo.getSize())
+                .hasNext(imageInfo.hasNext())
+                .build();
     }
 
     @Override
-    public PaginatedSliceResponseDto<ImageResponseDto> getAll(int page, int size) {
+    public PaginatedSliceResponseDto<ImageWithLikeByCurrentUserResponseDto> getAll(String currentUserId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        Slice<ImageResponseDto> imageInfo = imageRepository.findSlicedAll(pageable)
-                .map(imageMapper::toImageResponseDto);
-        return PaginatedSliceResponseDto.of(imageInfo);
+
+        Slice<ImageWithLikeByCurrentUserResponseDto> imageInfo = imageRepository
+                .findAllWithLikeFlag(Long.valueOf(currentUserId), pageable);
+
+
+        List<ImageWithLikeByCurrentUserResponseDto> updatedImages = updateUserNames(imageInfo.getContent());
+
+        return PaginatedSliceResponseDto.<ImageWithLikeByCurrentUserResponseDto>builder()
+                .content(updatedImages)
+                .pageNumber(imageInfo.getNumber())
+                .pageSize(imageInfo.getSize())
+                .hasNext(imageInfo.hasNext())
+                .build();
     }
 
     @Override
@@ -133,6 +167,9 @@ public class ImageServiceImpl implements ImageService {
     @Override
     public CommentResponseDto addComment(String userId, Long imageId, CommentRequestDto commentRequestDto) {
         Image image = findById(imageId);
+        UserNamesResponseDto userNamesByIds = authServiceClient.getUserNamesByIds(List.of(Long.valueOf(userId)));
+        String userName = userNamesByIds.names().get(Long.valueOf(userId));
+
         Comment comment = Comment.builder()
                 .content(commentRequestDto.content())
                 .createdAt(LocalDateTime.now())
@@ -140,7 +177,9 @@ public class ImageServiceImpl implements ImageService {
                 .userId(Long.valueOf(userId))
                 .build();
         Comment savedComment = commentRepository.save(comment);
-        return commentMapper.toCommentResponseDto(savedComment);
+        CommentResponseDto commentResponseDto = commentMapper.toCommentResponseDto(savedComment);
+        commentResponseDto.setUserName(userName);
+        return commentResponseDto;
     }
 
     @Override
@@ -150,8 +189,10 @@ public class ImageServiceImpl implements ImageService {
                 .orElseThrow(() -> new CommentNotFoundException(COMMENT_NOT_FOUND_EXCEPTION_MESSAGE));
         Image image = findById(imageId);
 
-        if (!comment.getUserId().equals(Long.valueOf(userId))
-                || !image.getUserId().equals(Long.valueOf(userId))) {
+        boolean isCommentOwner = comment.getUserId().equals(Long.valueOf(userId));
+        boolean isImageOwner = image.getUserId().equals(Long.valueOf(userId));
+
+        if (!isCommentOwner && !isImageOwner) {
             throw new OperationNotAllowedException(OPERATION_DELETE_NOT_ALLOWED_EXCEPTION_MESSAGE);
         }
 
@@ -172,11 +213,21 @@ public class ImageServiceImpl implements ImageService {
     }
 
     @Override
-    public PaginatedSliceResponseDto<CommentResponseDto> getAllCommentsByImageId(Long imageId, int page, int size) {
+    public PaginatedSliceResponseDto<CommentWithOwnersResponseDto> getAllCommentsByImageId(
+            Long imageId, String currentUserId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        Slice<CommentResponseDto> commentInfo = commentRepository.findAllByImageId(imageId, pageable)
-                .map(commentMapper::toCommentResponseDto);
-        return PaginatedSliceResponseDto.of(commentInfo);
+        Slice<CommentWithOwnersResponseDto> slice =
+                commentRepository.findAllByImageIdWithOwner(imageId, Long.valueOf(currentUserId), pageable);
+        PaginatedSliceResponseDto<CommentWithOwnersResponseDto> commentWithOwners = PaginatedSliceResponseDto.of(slice);
+
+        List<CommentWithOwnersResponseDto> updatedComments = updateOwnerNames(commentWithOwners.getContent());
+
+        return PaginatedSliceResponseDto.<CommentWithOwnersResponseDto>builder()
+                .content(updatedComments)
+                .pageNumber(commentWithOwners.getPageNumber())
+                .pageSize(commentWithOwners.getPageSize())
+                .hasNext(commentWithOwners.isHasNext())
+                .build();
     }
 
     private String generateUniqueFilename(String userId, String originalFilename) {
@@ -231,4 +282,44 @@ public class ImageServiceImpl implements ImageService {
         }
     }
 
+    private List<ImageWithLikeByCurrentUserResponseDto> updateUserNames(List<ImageWithLikeByCurrentUserResponseDto> images) {
+        if (images == null || images.isEmpty()) {
+            return images;
+        }
+
+        List<Long> userIds = images.stream()
+                .map(ImageWithLikeByCurrentUserResponseDto::getUserId)
+                .distinct()
+                .toList();
+
+        UserNamesResponseDto userNamesByIds = authServiceClient.getUserNamesByIds(userIds);
+
+        return images.stream()
+                .peek(image -> {
+                    String userName = userNamesByIds.names().get(image.getUserId());
+                    image.setUserName(userName);
+                })
+                .toList();
+    }
+
+    private List<CommentWithOwnersResponseDto> updateOwnerNames(List<CommentWithOwnersResponseDto> comments) {
+        if (comments == null || comments.isEmpty()) {
+            return comments;
+        }
+
+        List<Long> userIds = comments.stream()
+                .map(CommentWithOwnersResponseDto::getUserId)
+                .distinct()
+                .toList();
+
+
+        UserNamesResponseDto userNamesByIds = authServiceClient.getUserNamesByIds(userIds);
+
+        return comments.stream()
+                .peek(comment -> {
+                    String userName = userNamesByIds.names().get(comment.getUserId());
+                    comment.setOwnerName(userName);
+                })
+                .toList();
+    }
 }

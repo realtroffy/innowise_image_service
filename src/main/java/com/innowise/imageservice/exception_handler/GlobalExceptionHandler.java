@@ -7,6 +7,7 @@ import com.innowise.imageservice.exception.ImageFileRequiredException;
 import com.innowise.imageservice.exception.ImageNotFoundException;
 import com.innowise.imageservice.exception.InvalidImageSizeException;
 import com.innowise.imageservice.exception.InvalidImageTypeException;
+import com.innowise.imageservice.exception.OperationNotAllowedException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -97,5 +98,11 @@ public class GlobalExceptionHandler {
     public ResponseEntity<?> handleCommentNotFoundException(CommentNotFoundException e) {
         log.error(e.getMessage());
         return ResponseEntity.status(NOT_FOUND).body(new ErrorResponse(e.getMessage()));
+    }
+
+    @ExceptionHandler(OperationNotAllowedException.class)
+    public ResponseEntity<?> handleOperationNotAllowedException(OperationNotAllowedException e) {
+        log.error(e.getMessage(), e.getCause());
+        return ResponseEntity.status(BAD_REQUEST).body(new ErrorResponse(e.getMessage()));
     }
 }

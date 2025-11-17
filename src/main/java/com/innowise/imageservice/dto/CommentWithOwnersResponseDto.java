@@ -7,12 +7,13 @@ import java.time.LocalDateTime;
 
 @Data
 @AllArgsConstructor
-public class CommentResponseDto {
+public class CommentWithOwnersResponseDto {
 
     private Long id;
     private String content;
     private LocalDateTime createdAt;
     private Long userId;
     private Long imageId;
-    private String userName;
+    private boolean isCurrentUserOwner;
+    private String ownerName;
 }

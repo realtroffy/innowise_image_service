@@ -30,3 +30,8 @@ aws:
 images:
   min-bytes: 102400    # 100 KB
   max-bytes: 10485760  # 10 MB
+
+auth:
+  service:
+    url: http://authentication-service:8080/api/auth/names
+    secret: my-super-secret

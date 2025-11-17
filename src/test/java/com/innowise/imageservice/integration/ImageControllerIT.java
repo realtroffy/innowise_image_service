@@ -4,7 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.innowise.imageservice.dto.CommentRequestDto;
 import com.innowise.imageservice.dto.ImageRequestDto;
 import com.innowise.imageservice.dto.ImageResponseDto;
+import com.innowise.imageservice.dto.UserNamesResponseDto;
 import com.innowise.imageservice.integration.config.IntegrationTestConfig;
+import com.innowise.imageservice.service.AuthServiceClient;
 import com.innowise.imageservice.service.ImageService;
 import lombok.RequiredArgsConstructor;
 import org.junit.jupiter.api.BeforeEach;
@@ -13,12 +15,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import java.nio.file.Files;
+import java.util.Map;
 
-import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.everyItem;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -37,6 +45,7 @@ class ImageControllerIT extends IntegrationTestConfig {
     private static final String LIKES_PATH = "/likes";
     private static final String COMMENTS_PATH = "/comments";
     private static final String USER_ID = "1";
+    private static final String USER_NAME_STRING = "User";
     private static final String SECOND_USER_ID = "2";
     private static final String PAGE_PARAM = "page";
     private static final String SIZE_PARAM = "size";
@@ -59,6 +68,9 @@ class ImageControllerIT extends IntegrationTestConfig {
 
     @Autowired
     private ImageService imageService;
+
+    @MockitoBean
+    private AuthServiceClient authServiceClient;
 
     private ImageRequestDto imageRequestDto;
     private MockMultipartFile imageFile;
@@ -98,18 +110,28 @@ class ImageControllerIT extends IntegrationTestConfig {
     void getImageByIdIfExist() throws Exception {
         ImageResponseDto saved = imageService.upload(USER_ID, imageRequestDto, imageFile);
 
-        mvc.perform(get(IMAGE_URL + "/" + saved.id())
+        UserNamesResponseDto mockUserNamesResponseDto = new UserNamesResponseDto(Map.of(saved.getUserId(), USER_NAME_STRING));
+        when(authServiceClient.getUserNamesByIds(anyList())).thenReturn(mockUserNamesResponseDto);
+
+        mvc.perform(get("/api/images/{id}", saved.getId())
                         .header("X-User-Id", USER_ID))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(saved.id()))
+                .andExpect(jsonPath("$.id").value(saved.getId()))
                 .andExpect(jsonPath("$.description").value(TEST_IMAGE_DESCRIPTION))
+                .andExpect(jsonPath("$.userName").value(USER_NAME_STRING))
                 .andExpect(jsonPath("$.url").exists());
     }
 
+
     @Test
     void getAllImagesShouldReturnList() throws Exception {
-        imageService.upload(USER_ID, imageRequestDto, imageFile);
-        imageService.upload(SECOND_USER_ID, imageRequestDto, imageFile);
+        ImageResponseDto img1 = imageService.upload(USER_ID, imageRequestDto, imageFile);
+        ImageResponseDto img2 = imageService.upload(SECOND_USER_ID, imageRequestDto, imageFile);
+
+        UserNamesResponseDto namesMock = new UserNamesResponseDto(
+                Map.of(img1.getUserId(), USER_NAME_STRING,
+                        img2.getUserId(), USER_NAME_STRING));
+        when(authServiceClient.getUserNamesByIds(anyList())).thenReturn(namesMock);
 
         mvc.perform(get(IMAGE_URL)
                         .param(PAGE_PARAM, PAGE_VALUE)
@@ -117,34 +139,40 @@ class ImageControllerIT extends IntegrationTestConfig {
                         .header("X-User-Id", USER_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(EXPECTED_IMAGE_COUNT)))
-                .andExpect(jsonPath("$.content[*].description", everyItem(is(TEST_IMAGE_DESCRIPTION))));
+                .andExpect(jsonPath("$.content[*].description",
+                        everyItem(is(TEST_IMAGE_DESCRIPTION))));
     }
 
     @Test
     void getAllImagesByUserIdShouldReturnList() throws Exception {
-        imageService.upload(USER_ID, imageRequestDto, imageFile);
+        ImageResponseDto img1 = imageService.upload(USER_ID, imageRequestDto, imageFile);
         imageService.upload(USER_ID, imageRequestDto, imageFile);
         imageService.upload(SECOND_USER_ID, imageRequestDto, imageFile);
 
-        mvc.perform(get(USERS_URL + USER_ID + IMAGES_PATH)
+        UserNamesResponseDto namesMock = new UserNamesResponseDto(
+                Map.of(img1.getUserId(), USER_NAME_STRING));
+        when(authServiceClient.getUserNamesByIds(anyList())).thenReturn(namesMock);
+
+        mvc.perform(get(USERS_URL + IMAGES_PATH)
                         .param(PAGE_PARAM, PAGE_VALUE)
                         .param(SIZE_PARAM, SIZE_VALUE)
                         .header("X-User-Id", USER_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(EXPECTED_IMAGE_COUNT)))
-                .andExpect(jsonPath("$.content[*].description", everyItem(is(TEST_IMAGE_DESCRIPTION))));
+                .andExpect(jsonPath("$.content[*].description",
+                        everyItem(is(TEST_IMAGE_DESCRIPTION))));
     }
 
     @Test
     void pressOrDeleteLikeShouldWork() throws Exception {
         ImageResponseDto saved = imageService.upload(USER_ID, imageRequestDto, imageFile);
 
-        mvc.perform(put(IMAGE_URL + "/" + saved.id() + LIKES_PATH)
+        mvc.perform(put(IMAGE_URL + "/" + saved.getId() + LIKES_PATH)
                         .header("X-User-Id", USER_ID))
                 .andExpect(status().isOk())
                 .andExpect(content().string(LIKED_RESPONSE));
 
-        mvc.perform(put(IMAGE_URL + "/" + saved.id() + LIKES_PATH)
+        mvc.perform(put(IMAGE_URL + "/" + saved.getId() + LIKES_PATH)
                         .header("X-User-Id", USER_ID))
                 .andExpect(status().isOk())
                 .andExpect(content().string(DISLIKED_RESPONSE));
@@ -153,11 +181,16 @@ class ImageControllerIT extends IntegrationTestConfig {
     @Test
     void addUpdateDeleteCommentShouldWork() throws Exception {
         ImageResponseDto saved = imageService.upload(USER_ID, imageRequestDto, imageFile);
-        String postUrl = IMAGE_URL + "/" + saved.id() + COMMENTS_PATH;
+        String postUrl = IMAGE_URL + "/" + saved.getId() + COMMENTS_PATH;
+
+        UserNamesResponseDto namesMock = new UserNamesResponseDto(
+                Map.of(Long.valueOf(USER_ID), USER_NAME_STRING));
+        when(authServiceClient.getUserNamesByIds(anyList())).thenReturn(namesMock);
 
         CommentRequestDto commentDto = new CommentRequestDto(COMMENT_CONTENT);
         MvcResult result = mvc.perform(post(postUrl)
                         .header("X-User-Id", USER_ID)
+                        .header("X-User-Name", USER_NAME_STRING)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(commentDto)))
                 .andExpect(status().isCreated())
@@ -166,17 +199,18 @@ class ImageControllerIT extends IntegrationTestConfig {
 
         long commentId = objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asLong();
 
-        String putUrl = IMAGE_URL + "/" + saved.id() + COMMENTS_PATH + "/" + commentId;
+        String putUrl = IMAGE_URL + "/" + saved.getId() + COMMENTS_PATH + "/" + commentId;
 
         CommentRequestDto updatedDto = new CommentRequestDto(UPDATED_COMMENT_CONTENT);
         mvc.perform(put(putUrl)
                         .header("X-User-Id", USER_ID)
+                        .header("X-User-Name", USER_NAME_STRING)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updatedDto)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").value(UPDATED_COMMENT_CONTENT));
 
-        String deleteUrl = IMAGE_URL + "/" + saved.id() + COMMENTS_PATH + "/" + commentId;
+        String deleteUrl = IMAGE_URL + "/" + saved.getId() + COMMENTS_PATH + "/" + commentId;
 
         mvc.perform(delete(deleteUrl)
                         .header("X-User-Id", USER_ID))

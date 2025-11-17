@@ -2,11 +2,14 @@ package com.innowise.imageservice.controller;
 
 import com.innowise.imageservice.dto.CommentRequestDto;
 import com.innowise.imageservice.dto.CommentResponseDto;
+import com.innowise.imageservice.dto.CommentWithOwnersResponseDto;
 import com.innowise.imageservice.dto.ImageRequestDto;
 import com.innowise.imageservice.dto.ImageResponseDto;
+import com.innowise.imageservice.dto.ImageWithLikeByCurrentUserResponseDto;
 import com.innowise.imageservice.dto.PaginatedSliceResponseDto;
 import com.innowise.imageservice.service.ImageService;
 
+import com.innowise.imageservice.swagger.ImageControllerSwagger;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -29,7 +32,7 @@ import static org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api")
-public class ImageController {
+public class ImageController implements ImageControllerSwagger {
 
     private final ImageService imageService;
 
@@ -43,21 +46,24 @@ public class ImageController {
     }
 
     @GetMapping("/images/{id}")
-    public ResponseEntity<ImageResponseDto> getById(@PathVariable("id") Long imageId) {
-        return ResponseEntity.ok(imageService.getById(imageId));
+    public ResponseEntity<ImageWithLikeByCurrentUserResponseDto> getById(@RequestHeader("X-User-Id") String currentUserId,
+                                                                         @PathVariable("id") Long imageId) {
+        return ResponseEntity.ok(imageService.getById(currentUserId, imageId));
     }
 
+
     @GetMapping("/users/images")
-    public ResponseEntity<PaginatedSliceResponseDto<ImageResponseDto>> getAllUByUserId(@RequestHeader("X-User-Id") String currentUserId,
-                                                                                       @RequestParam(defaultValue = "0") int page,
-                                                                                       @RequestParam(defaultValue = "20") int size) {
+    public ResponseEntity<PaginatedSliceResponseDto<ImageWithLikeByCurrentUserResponseDto>> getAllByUserId(@RequestHeader("X-User-Id") String currentUserId,
+                                                                                      @RequestParam(defaultValue = "0") int page,
+                                                                                      @RequestParam(defaultValue = "20") int size) {
         return ResponseEntity.ok(imageService.getAllByUserId(currentUserId, page, size));
     }
 
     @GetMapping("/images")
-    public ResponseEntity<PaginatedSliceResponseDto<ImageResponseDto>> getAllBy(@RequestParam(defaultValue = "0") int page,
-                                                                                @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(imageService.getAll(page, size));
+    public ResponseEntity<PaginatedSliceResponseDto<ImageWithLikeByCurrentUserResponseDto>> getAll(@RequestHeader("X-User-Id") String userId,
+                                                                                                   @RequestParam(defaultValue = "0") int page,
+                                                                                                   @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(imageService.getAll(userId, page, size));
     }
 
     @PutMapping("/images/{id}/likes")
@@ -74,10 +80,12 @@ public class ImageController {
     }
 
     @GetMapping("/images/{id}/comments")
-    public ResponseEntity<PaginatedSliceResponseDto<CommentResponseDto>> getAllCommentsByImageId(@PathVariable("id") Long imageId,
-                                                                                                 @RequestParam(defaultValue = "0") int page,
-                                                                                                 @RequestParam(defaultValue = "5") int size) {
-        return ResponseEntity.ok(imageService.getAllCommentsByImageId(imageId, page, size));
+    public ResponseEntity<PaginatedSliceResponseDto<CommentWithOwnersResponseDto>> getAllCommentsByImageId(@RequestHeader("X-User-Id") String userId,
+                                                                                                           @PathVariable("id") Long imageId,
+                                                                                                           @RequestParam(defaultValue = "0") int page,
+                                                                                                           @RequestParam(defaultValue = "5") int size) {
+        return ResponseEntity.ok(
+                imageService.getAllCommentsByImageId(imageId, userId, page, size));
     }
 
 

@@ -7,13 +7,14 @@ import java.time.LocalDateTime;
 
 @Data
 @AllArgsConstructor
-public class ImageResponseDto {
+public class ImageWithLikeByCurrentUserResponseDto {
 
     private Long id;
     private String url;
     private String description;
-    private LocalDateTime uploadedAt;
+    private LocalDateTime updatedAt;
     private Long likes;
-    private Long userId;
+    private boolean likedByCurrentUser;
     private String userName;
+    private Long userId;
 }
