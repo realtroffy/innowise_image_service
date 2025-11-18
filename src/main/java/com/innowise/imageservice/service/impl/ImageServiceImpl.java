@@ -23,6 +23,7 @@ import com.innowise.imageservice.model.Like;
 import com.innowise.imageservice.repository.CommentRepository;
 import com.innowise.imageservice.repository.ImageRepository;
 import com.innowise.imageservice.repository.LikeRepository;
+import com.innowise.imageservice.service.ActivityEventProducer;
 import com.innowise.imageservice.service.AuthServiceClient;
 import com.innowise.imageservice.service.ImageService;
 import com.innowise.imageservice.service.S3Service;
@@ -62,6 +63,7 @@ public class ImageServiceImpl implements ImageService {
     private final ImageMapper imageMapper;
     private final CommentMapper commentMapper;
     private final AuthServiceClient authServiceClient;
+    private final ActivityEventProducer activityEventProducer;
 
     @Override
     public ImageResponseDto upload(String userId, ImageRequestDto imageRequestDto, MultipartFile imageFile) {
@@ -145,21 +147,24 @@ public class ImageServiceImpl implements ImageService {
     @Transactional
     public String setOrRemoveLike(String userId, Long imageId) {
         Image image = findById(imageId);
-        Like like = likeRepository.findByUserIdAndImageId(Long.valueOf(userId), imageId).orElse(null);
+        Long userIdLong = Long.valueOf(userId);
+        Like like = likeRepository.findByUserIdAndImageId(userIdLong, imageId).orElse(null);
         if (like == null) {
             Like newLike = Like.builder()
                     .image(image)
-                    .userId(Long.valueOf(userId))
+                    .userId(userIdLong)
                     .createdAt(LocalDateTime.now())
                     .build();
             likeRepository.save(newLike);
             image.setLikes(image.getLikes() + 1L);
             imageRepository.save(image);
+            activityEventProducer.sendAddLikeEvent(userIdLong, imageId);
             return "Liked";
         } else {
             likeRepository.delete(like);
             image.setLikes(image.getLikes() - 1L);
             imageRepository.save(image);
+            activityEventProducer.sendRemoveLikeEvent(userIdLong, imageId);
             return "Disliked";
         }
     }
@@ -167,18 +172,20 @@ public class ImageServiceImpl implements ImageService {
     @Override
     public CommentResponseDto addComment(String userId, Long imageId, CommentRequestDto commentRequestDto) {
         Image image = findById(imageId);
-        UserNamesResponseDto userNamesByIds = authServiceClient.getUserNamesByIds(List.of(Long.valueOf(userId)));
-        String userName = userNamesByIds.names().get(Long.valueOf(userId));
+        Long userIdLong = Long.valueOf(userId);
+        UserNamesResponseDto userNamesByIds = authServiceClient.getUserNamesByIds(List.of(userIdLong));
+        String userName = userNamesByIds.names().get(userIdLong);
 
         Comment comment = Comment.builder()
                 .content(commentRequestDto.content())
                 .createdAt(LocalDateTime.now())
                 .image(image)
-                .userId(Long.valueOf(userId))
+                .userId(userIdLong)
                 .build();
         Comment savedComment = commentRepository.save(comment);
         CommentResponseDto commentResponseDto = commentMapper.toCommentResponseDto(savedComment);
         commentResponseDto.setUserName(userName);
+        activityEventProducer.sendCreateCommentEvent(userIdLong, imageId, savedComment.getId(), savedComment.getContent());
         return commentResponseDto;
     }
 
@@ -188,15 +195,17 @@ public class ImageServiceImpl implements ImageService {
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new CommentNotFoundException(COMMENT_NOT_FOUND_EXCEPTION_MESSAGE));
         Image image = findById(imageId);
+        Long userIdLong = Long.valueOf(userId);
 
-        boolean isCommentOwner = comment.getUserId().equals(Long.valueOf(userId));
-        boolean isImageOwner = image.getUserId().equals(Long.valueOf(userId));
+        boolean isCommentOwner = comment.getUserId().equals(userIdLong);
+        boolean isImageOwner = image.getUserId().equals(userIdLong);
 
         if (!isCommentOwner && !isImageOwner) {
             throw new OperationNotAllowedException(OPERATION_DELETE_NOT_ALLOWED_EXCEPTION_MESSAGE);
         }
 
         commentRepository.delete(comment);
+        activityEventProducer.sendRemoveCommentEvent(userIdLong, imageId, commentId);
     }
 
     @Override
