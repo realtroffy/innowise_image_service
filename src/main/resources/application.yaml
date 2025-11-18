@@ -17,6 +17,16 @@ spring:
     multipart:
       max-file-size: 15MB
       max-request-size: 15MB
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+kafka:
+  topics:
+    partitions: 1
+    replication-factor: 1
 
 aws:
   s3:
@@ -28,8 +38,8 @@ aws:
     secret-key: test
 
 images:
-  min-bytes: 102400    # 100 KB
-  max-bytes: 10485760  # 10 MB
+  min-bytes: 102400 # 100 KB
+  max-bytes: 10485760 # 10 MB
 
 auth:
   service:
